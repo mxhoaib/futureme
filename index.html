@@ -1,0 +1,33 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FutureMe: write a letter to your future self</title><meta name="description" content="Write a letter to your future self. It stays sealed in your browser until the date you pick, or you can download it as a calendar reminder.">
+<meta property="og:title" content="FutureMe: a letter to your future self"><meta property="og:url" content="https://mxhoaib.github.io/futureme/"><meta name="twitter:card" content="summary">
+<link rel="stylesheet" href="base.css"><style>:root{--g1:#bf5af233;--g2:#ff375f22;--c1:#bf5af2;--c2:#ff6482}textarea{min-height:200px;line-height:1.6}.letter{border:1px solid #ffffff1a;border-radius:16px;padding:14px;margin:10px 0;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.open{white-space:pre-wrap;background:#ffffff08;border-radius:12px;padding:14px;margin-top:10px;width:100%;overflow-wrap:anywhere}.chips{display:flex;gap:6px;flex-wrap:wrap}</style></head><body><div class="bg"></div>
+<div class="wrap"><header><span>💌 FutureMe</span><span class="pill">Private · stays on your device</span></header>
+<section class="hero"><h1>Dear future me,<br><span class="grad">remember this.</span></h1><p class="sub">Write a letter, seal it, and it won't open until the day you choose. No account, no server: it stays in this browser.</p></section>
+<section class="panel"><label>Need a prompt?</label><div class="chips" id="prompts"></div>
+<label for="msg">Your letter</label><textarea id="msg" maxlength="20000" placeholder="Dear me in one year…"></textarea>
+<div class="grid"><div><label for="when">Open on</label><input id="when" type="date"></div><div><label>Quick pick</label><div class="chips"><button class="ghost" data-m="6">6 months</button><button class="ghost" data-m="12">1 year</button><button class="ghost" data-m="60">5 years</button></div></div></div>
+<div class="row"><button class="btn" id="seal">🔒 Seal letter</button><button class="ghost" id="ics" title="Adds a reminder to your calendar">📅 Calendar reminder</button><span id="toast" class="muted small" role="status"></span></div>
+<p class="demo" style="margin-top:14px">Letters are saved in this browser only (localStorage). Clearing your browser data deletes them, and nothing is emailed. Download a backup if it matters to you.</p></section>
+<section class="panel"><b>Your sealed letters</b><div id="list"></div><div class="row"><button class="ghost" id="backup">⬇ Download backup</button></div></section>
+<section class="panel"><b>Want it read back to you, beautifully?</b><p class="muted">I can design a printable keepsake version of your letter.</p><a class="btn" href="https://paypal.me/imshoi" target="_blank" rel="noopener">Get a keepsake design →</a></section>
+</div><footer>FutureMe stores nothing on a server.</footer>
+<script>
+const $=s=>document.querySelector(s),toast=m=>$('#toast').textContent=m;
+const P=["What are you worried about right now?","What do you hope has changed?","Who matters most to you today?","What are you proud of this year?","What advice would you give yourself?"];
+P.forEach(p=>{const b=document.createElement('button');b.className='ghost';b.textContent=p;b.onclick=()=>{$('#msg').value+=($('#msg').value?'\n\n':'')+p+'\n';$('#msg').focus()};$('#prompts').append(b)});
+const iso=d=>d.toISOString().slice(0,10);const addM=m=>{const d=new Date();d.setMonth(d.getMonth()+m);return iso(d)};
+$('#when').min=iso(new Date(Date.now()+864e5));$('#when').value=addM(12);
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{$('#when').value=addM(+b.dataset.m)});
+const load=()=>{try{return JSON.parse(localStorage.getItem('fm')||'[]')}catch(e){return[]}},save=l=>localStorage.setItem('fm',JSON.stringify(l));
+function valid(){const t=$('#msg').value.trim();if(!t){toast('✍️ Write a few words first.');$('#msg').focus();return null}if(!$('#when').value||$('#when').value<=iso(new Date())){toast('📅 Pick a date in the future.');return null}return t}
+$('#seal').onclick=()=>{const t=valid();if(!t)return;const l=load();l.push({id:Date.now(),text:t,open:$('#when').value,made:iso(new Date())});save(l);$('#msg').value='';render();toast('Sealed ✓ See you on '+new Date($('#when').value).toLocaleDateString('en',{dateStyle:'long'}))};
+$('#ics').onclick=()=>{if(!valid())return;const d=$('#when').value.replace(/-/g,'');const ics=`BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//FutureMe//EN\r\nBEGIN:VEVENT\r\nUID:${Date.now()}@futureme\r\nDTSTAMP:${new Date().toISOString().replace(/[-:]/g,'').slice(0,15)}Z\r\nDTSTART;VALUE=DATE:${d}\r\nSUMMARY:Open your FutureMe letter 💌\r\nDESCRIPTION:Open https://mxhoaib.github.io/futureme/ in the same browser to read your letter.\r\nEND:VEVENT\r\nEND:VCALENDAR`;
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar'}));a.download='futureme-reminder.ics';a.click();toast('Reminder downloaded ✓ Open it to add it to your calendar.')};
+function render(){const l=load(),today=iso(new Date()),el=$('#list');el.innerHTML=l.length?'':'<p class="muted">No letters yet.</p>';
+ l.sort((a,b)=>a.open<b.open?-1:1).forEach(x=>{const d=document.createElement('div');d.className='letter';const ready=x.open<=today;const days=Math.ceil((new Date(x.open)-new Date(today))/864e5);
+ d.innerHTML=`<span>${ready?'📬 Ready to open':'🔒 Sealed'} · written ${x.made} · ${ready?'opened':'opens'} ${x.open}${ready?'':' ('+days+' days)'}</span>`;
+ const b=document.createElement('button');b.className='ghost';b.textContent=ready?'Open':'Delete';b.onclick=()=>{if(ready){const p=document.createElement('div');p.className='open';p.textContent=x.text;d.append(p);b.remove()}else if(confirm('Delete this sealed letter?')){save(load().filter(y=>y.id!==x.id));render()}};d.append(b);el.append(d)})}
+$('#backup').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(load(),null,1)],{type:'application/json'}));a.download='futureme-backup.json';a.click();toast('Backup downloaded ✓ (it contains your letters, so keep it private)')};
+render();
+</script></body></html>
